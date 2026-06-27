@@ -1,0 +1,99 @@
+package ies
+
+import (
+	"github.com/lvdund/asn1go/per"
+	"github.com/lvdund/xnap/common"
+)
+
+var traceActivationConstraints = per.SequenceConstraints{
+	Extensible: true,
+	RootComponents: []per.ComponentInfo{
+		{Name: "ng-ran-TraceID"},
+		{Name: "interfaces-to-trace"},
+		{Name: "trace-depth"},
+		{Name: "trace-coll-address"},
+		{Name: "ie-Extension", Optional: true},
+	},
+	ExtComponents: []per.ComponentInfo{
+		{Name: "iE-Extensions"},
+	},
+}
+
+type TraceActivation struct {
+	NgRanTraceID      NGRANTraceID
+	InterfacesToTrace per.BitString
+	TraceDepth        TraceDepth
+	TraceCollAddress  TransportLayerAddress
+	IEExtensions      []byte
+}
+
+func (ie *TraceActivation) Encode(e *per.Encoder) error {
+	seq := e.NewSequenceEncoder(traceActivationConstraints)
+	hasExt := len(ie.IEExtensions) > 0
+	if err := seq.EncodeExtensionBit(hasExt); err != nil {
+		return err
+	}
+	if err := seq.EncodePreamble([]bool{false}); err != nil {
+		return err
+	}
+	if err := ie.NgRanTraceID.Encode(e); err != nil {
+		return err
+	}
+	if err := e.EncodeBitString(ie.InterfacesToTrace, per.SizeConstraints{
+		Extensible: false,
+		Min:        common.Ptr(int64(8)),
+		Max:        common.Ptr(int64(8)),
+	}); err != nil {
+		return err
+	}
+	if err := ie.TraceDepth.Encode(e); err != nil {
+		return err
+	}
+	if err := ie.TraceCollAddress.Encode(e); err != nil {
+		return err
+	}
+	if hasExt {
+		if err := seq.EncodeExtensionAdditions([]bool{true}, [][]byte{ie.IEExtensions}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ie *TraceActivation) Decode(d *per.Decoder) error {
+	seq := d.NewSequenceDecoder(traceActivationConstraints)
+	if err := seq.DecodeExtensionBit(); err != nil {
+		return err
+	}
+	if err := seq.DecodePreamble(); err != nil {
+		return err
+	}
+	if err := ie.NgRanTraceID.Decode(d); err != nil {
+		return err
+	}
+	{
+		val, err := d.DecodeBitString(per.SizeConstraints{
+			Extensible: false,
+			Min:        common.Ptr(int64(8)),
+			Max:        common.Ptr(int64(8)),
+		})
+		if err != nil {
+			return err
+		}
+		ie.InterfacesToTrace = val
+	}
+	if err := ie.TraceDepth.Decode(d); err != nil {
+		return err
+	}
+	if err := ie.TraceCollAddress.Decode(d); err != nil {
+		return err
+	}
+	extBytes, err := seq.DecodeExtensionAdditions()
+	if err != nil {
+		return err
+	}
+	if len(extBytes) > 0 {
+		ie.IEExtensions = extBytes[0]
+	}
+	return nil
+}

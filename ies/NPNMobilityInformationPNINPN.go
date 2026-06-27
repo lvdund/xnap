@@ -1,0 +1,62 @@
+package ies
+
+import (
+	"github.com/lvdund/asn1go/per"
+)
+
+var nPNMobilityInformationPNINPNConstraints = per.SequenceConstraints{
+	Extensible: true,
+	RootComponents: []per.ComponentInfo{
+		{Name: "allowedPNI-NPN-ID-List"},
+		{Name: "iE-Extension", Optional: true},
+	},
+	ExtComponents: []per.ComponentInfo{
+		{Name: "iE-Extensions"},
+	},
+}
+
+type NPNMobilityInformationPNINPN struct {
+	AllowedPNINPNIDList AllowedPNINPNIDList
+	IEExtensions        []byte
+}
+
+func (ie *NPNMobilityInformationPNINPN) Encode(e *per.Encoder) error {
+	seq := e.NewSequenceEncoder(nPNMobilityInformationPNINPNConstraints)
+	hasExt := len(ie.IEExtensions) > 0
+	if err := seq.EncodeExtensionBit(hasExt); err != nil {
+		return err
+	}
+	if err := seq.EncodePreamble([]bool{false}); err != nil {
+		return err
+	}
+	if err := ie.AllowedPNINPNIDList.Encode(e); err != nil {
+		return err
+	}
+	if hasExt {
+		if err := seq.EncodeExtensionAdditions([]bool{true}, [][]byte{ie.IEExtensions}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ie *NPNMobilityInformationPNINPN) Decode(d *per.Decoder) error {
+	seq := d.NewSequenceDecoder(nPNMobilityInformationPNINPNConstraints)
+	if err := seq.DecodeExtensionBit(); err != nil {
+		return err
+	}
+	if err := seq.DecodePreamble(); err != nil {
+		return err
+	}
+	if err := ie.AllowedPNINPNIDList.Decode(d); err != nil {
+		return err
+	}
+	extBytes, err := seq.DecodeExtensionAdditions()
+	if err != nil {
+		return err
+	}
+	if len(extBytes) > 0 {
+		ie.IEExtensions = extBytes[0]
+	}
+	return nil
+}

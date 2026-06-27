@@ -1,0 +1,63 @@
+package ies
+
+import (
+	"github.com/lvdund/asn1go/per"
+)
+
+const (
+	MeasuredTrajectoryCellInfoChNGRANCell       = 0
+	MeasuredTrajectoryCellInfoChChoiceExtension = 1
+)
+
+var measuredTrajectoryCellInfoConstraints = per.ChoiceConstraints{
+	Extensible: false,
+	RootAlternatives: []per.AlternativeInfo{
+		{Name: "nG-RAN-Cell"},
+		{Name: "choice-extension"},
+	},
+	ExtAlternatives: nil,
+}
+
+type MeasuredTrajectoryCellInfo struct {
+	Choice          int
+	NGRANCell       *MeasuredTrajectoryNGRANCellInfo
+	ChoiceExtension []byte
+}
+
+func (ie *MeasuredTrajectoryCellInfo) Encode(e *per.Encoder) error {
+	choice := e.NewChoiceEncoder(measuredTrajectoryCellInfoConstraints)
+	switch ie.Choice {
+	case 0: // nG-RAN-Cell
+		if err := choice.EncodeChoice(0, false, nil); err != nil {
+			return err
+		}
+		if err := ie.NGRANCell.Encode(e); err != nil {
+			return err
+		}
+	case 1: // choice-extension
+		if err := choice.EncodeChoice(1, false, nil); err != nil {
+			return err
+		}
+		// TODO encode field ChoiceExtension (kind=ext)
+	}
+	return nil
+}
+
+func (ie *MeasuredTrajectoryCellInfo) Decode(d *per.Decoder) error {
+	choice := d.NewChoiceDecoder(measuredTrajectoryCellInfoConstraints)
+	idx, _, _, err := choice.DecodeChoice()
+	if err != nil {
+		return err
+	}
+	ie.Choice = int(idx)
+	switch idx {
+	case 0: // nG-RAN-Cell
+		ie.NGRANCell = new(MeasuredTrajectoryNGRANCellInfo)
+		if err := ie.NGRANCell.Decode(d); err != nil {
+			return err
+		}
+	case 1: // choice-extension
+		// TODO decode field ChoiceExtension (kind=ext)
+	}
+	return nil
+}
